@@ -1,0 +1,30 @@
+{
+  "selected": [
+    "poeplau2020",
+    "abdulla2014",
+    "necula1997",
+    "pnueli1998"
+  ],
+  "entries": [
+    {
+      "key": "poeplau2020",
+      "title": "Symbolic Execution with SymCC: Don't Interpret, Compile!",
+      "bib": "/mnt/data/final_journal_work/paper/references.bib"
+    },
+    {
+      "key": "abdulla2014",
+      "title": "String Constraints for Verification",
+      "bib": "/mnt/data/final_journal_work/paper/references.bib"
+    },
+    {
+      "key": "necula1997",
+      "title": "Proof-Carrying Code",
+      "bib": "/mnt/data/final_journal_work/paper/references.bib"
+    },
+    {
+      "key": "pnueli1998",
+      "title": "Translation Validation",
+      "bib": "/mnt/data/final_journal_work/paper/references.bib"
+    }
+  ]
+}

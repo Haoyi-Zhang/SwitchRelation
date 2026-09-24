@@ -1,0 +1,7 @@
+Claim,Class,Location,Evidence,Boundary
+Exact maximal universal switching relation,mathematical theorem,paper: Claim Boundary,command induction and constructive converse,bounded language and stated observations
+Finite complete interface-indexed test basis,mathematical theorem,paper: finite complete basis,clause-complete proof,finite capacity and labeled faults
+Persistent/local register separation,semantic definition,paper: persistent interface versus local names,scope and erasure definition,paper language only
+Conditional accepted-replay contract,conditional executable theorem,paper and TRUSTED-COMPUTING-BASE.md,"coverage induction, replay, spec-code map",conditional on replay-kernel conformance
+Strict untrusted-JSON preflight,executable safety property,src/strict_json.py,hostile parser tests,field semantics checked by replay
+Clean-room 50-page reproduction,reproducibility claim,results/cleanroom_validation.json,fresh-copy build and page comparison,same supplied template/environment

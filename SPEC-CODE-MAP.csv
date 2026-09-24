@@ -1,0 +1,8 @@
+Claim,Formal object,Implementation file,Symbol,Definition line,Executable evidence,Boundary
+Primitive execution,small-step and terminal execution,src/replay.py,interpret,91,retained-case replay and concrete audits,No proof-assistant Python refinement theorem
+Region satisfaction,finite-domain region feasibility,src/branch_replay.py,region,53,solver cross-checks and replay,Relies on the replay kernel implementation
+Region cover,disjoint exhaustive branch cover,inspect_packet.py,inspect_branch_csv,168,certificate replay,Exhaustion rejects or returns UNKNOWN
+Terminal observation,observable result projection,inspect_packet.py,inspect_results,187,leaf re-execution,Final heap excluded by the model
+Least counterexample,lexicographic minimum distinguishing input,src/branch_replay.py,minimum,49,witness replay and smaller-region checks,Bounded declared input domain only
+Certificate replay,producer-independent certificate validation,src/final_audit.py,_replay_prefix,89,retained certificates and mutations,Conditional on replay-kernel correctness
+Strict certificate parse,duplicate-key/non-finite rejection,src/final_clean_extract_audit.py,parse_optional_json,84,hostile parser unit tests,Semantic schema remains replayer responsibility
