@@ -8,19 +8,29 @@ checks; no claim of proof-assistant mechanization is made.
 
 ## 1. Universal switches
 
-The exact universal relation and its constructive converse are proved in
-`full_abstraction.md`:
+The exact universal relation, its constructive converse, and the fixed finite
+basis are proved in `full_abstraction.md`:
 
+* the static interface fixes object and persistent-register names, while each
+  state's immutable capacity map is state data bounded by a common `B`;
 * allocation equivalence retains capacity, initialization, every initialized
-  byte, scalar registers, and previous emissions, while quotienting valid cache
+  byte, persistent scalars, and previous emissions, while quotienting valid cache
   representation, uninitialized payload, and the view marker;
-* allocation equivalence is preserved by every correct primitive;
-* it is exactly contextual equivalence for all continuations in the declared
-  language; and
-* any relation failure has a distinguishing continuation of at most two commands.
+* command results bind fresh local scalar names, which are erased before the
+  terminal observation; terminal observations contain only status or labeled
+  first fault plus the emission sequence;
+* allocation equivalence is preserved by every correct primitive and is exactly
+  contextual equivalence for all well-typed continuations in the declared
+  language;
+* any relation failure has a **state-dependent** distinguishing continuation of
+  at most two commands; and
+* a separate **state-independent** complete basis uses one empty-test template,
+  one persistent-scalar template, and eight fixed single-bit probes per object
+  cell, for `1 + |R| + 8*B*|O|` instantiated tests.
 
 The `[0,x,0]` example shows why the initialized tail after the first NUL cannot be
-discarded by a universal switch.
+discarded by a universal switch. The one-cell values 2 and 3 show why equality
+probes against only 0 and 1 do not form a fixed complete byte basis.
 
 ## 2. Finite regions for one continuation
 
@@ -191,51 +201,88 @@ This is a completeness theorem for the declared finite language and the abstract
 uncapped algorithm.  It is not a useful polynomial complexity bound: the upper
 bound is exponential in the number of byte inputs.
 
-## 6. Operational caps and final measurements
+## 6. Operational caps, process modes, and reconciled measurements
 
 The delivered producer enforces at most 6,000 nodes and at most 48 regional facts
-per branch.  Hitting either cap raises a rejection that the wrapper records as
+per branch. Hitting either cap raises a rejection that the wrapper records as
 `UNKNOWN`; no partial tree is replayed or reported as equivalence.
 
-The final single-worker run retained certificates for C001--C166.  The replayer
-accepted all 166, with 9,986 total nodes, 6,281 leaves, and 1,281 infeasible
-children.  The expected labels matched for 150 equivalent and 16 different
-cases.  Production used 11,267 regional-solver calls and replay used another
-11,267.  Including top-level checks, the branch campaign counted 22,866 capped
-obligations.
+The retained original batch certified C001--C166 in one process. The producer's
+in-memory proof object was checked in that same process before the retained files
+were written. The 166 accepted classifications comprise 150 exact-outcome
+equivalences and 16 differences, with 9,986 nodes, 6,281 leaves, and 1,281
+infeasible answer positions. Production used 11,267 regional calls and replay
+used another 11,267. These facts do **not** establish one fresh process per
+certificate.
 
-C167 is a 32-origin high-fanout negative control.  Under the formal 6,000-node and
-48-fact caps, production stopped at the node budget after 6,055 regional-solver
-calls and was recorded as `unknown_resource_exhaustion`.  It is not counted as
-equivalent or different.
+Later continuation and clean-extract audits re-read stored certificate files in
+their respective process. The isolated campaign instead writes every newly
+generated proof to an external campaign directory, re-reads all 166 serialized
+files, and checks them in the campaign process. It performs one additional
+independent CLI-process smoke for C135. That smoke has four replayer regional
+calls and one top-level checker obligation.
 
-A separately written brute-force oracle over alphabet `{0,1,2,3}` checked 384
-region instances, 11,292 concrete assignments, and 5,947 pairwise relation facts;
-it found no disagreement with either regional solver.  A mutation suite performed
-18 parser/certificate attacks, all rejected.  These are finite checks and do not
-prove arbitrary Python execution.
+C167 is a 32-origin high-fanout negative control. Its case schema retains the
+case-generator default `expected="equivalent"`; that field is provisional
+metadata, not a validated result. Under the 6,000-node and 48-fact caps,
+production stopped after 6,055 regional calls and returned
+`unknown_resource_exhaustion`. No C167 certificate exists, and C167 is excluded
+from the 166 completed classifications.
 
-The original completion campaign reached 91,087 solver/mutation/checker
-obligations.  A budget-closing continuation audit added 8,608 obligations: it
-rematerialized all cases, repeated the full-abstraction audit, checked 320 fresh
-regions, freshly replayed C001--C165, and repeated all 18 mutations.  A final
-predeclared clean-extract audit replayed C061, C062, C065, C162, and C163 using 299
-regional calls and five top-level checks, adding 304 obligations.  The cumulative
-count is therefore 99,999 of 100,000, leaving one.  Direct concrete assignment
-checks are disclosed separately: 92,810 historical, 77,050 original-final, and
-480,697 continuation checks, totaling 650,557.
+The original regional oracle used 384 instances and 11,292 brute-force
+assignments. A later fresh-seed run used 320 instances and 9,872 assignments.
+Both producer-side and replayer-side algorithms matched brute force. The 18
+mutations are exactly four mutually exclusive groups of sizes 7/4/3/4:
 
-C166 retains its original complete production and replay evidence.  A second full
-replay was excluded because it would exceed the ceiling; instead, the continuation
-audit concretely recomputed all 6,281 stored leaf minima through three execution
-paths, including C166, and performed exhaustive one-byte and selected two-byte
-checks.  This does not convert the continuation into a second complete regional
-replay of C166.
+1. seven top-level binding, verdict, minimum, and total mutations;
+2. four leaf-value and JSON-type mutations;
+3. three query, coverage, and truncation mutations; and
+4. four graph and parser-structure mutations.
 
-Retained scientific runs used one worker.  Original final processes including
-C167 used 21.192 process CPU seconds, the continuation audit used 12.685, and the
-clean-extract replay used 0.310, for an aggregate of 34.187 seconds.  Peak RSS
-across runs is 121,460 KiB.
+All 18 were rejected in both retained mutation passes.
+
+The full-abstraction implementation evidence must also be separated by unit. The
+base universe contains 36 fixed-capacity states, hence 1,296 ordered base pairs,
+plus three separately named directional controls. The historical field
+`finite_basis_executions=222` counted only 37 related pairs times six former
+0/1-basis tests at the pair-comparison level; it omitted 1,262 unrelated-pair
+witness comparisons. Deriving single-side work from those records gives 2,968
+executions for each historical run. The repaired audit uses an 18-test fixed
+basis on all 1,299 base-plus-control checks, all 1,262 state-dependent witnesses,
+and the 2/3 control, for 49,294 single-side program executions. The direct
+all-byte signature audit checks 65,536 ordered byte pairs by signature comparison,
+not by interpreter execution.
+
+The value `99,999 / 100,000` is a frozen historical obligation subledger ending
+with the five-case clean-extract replay. The later C135 CLI smoke is a separate
+post-freeze campaign of five obligations, yielding a same-rule lower bound of
+100,004 if combined. Other post-freeze repair and packaging actions were not
+uniformly instrumented under that rule, so the exact all-time obligation total is
+unknown.
+
+Concrete assignments and program executions are disclosed separately. Named
+homogeneous assignment subsets are 65,536 primitive assignments, 11,292 original
+regional assignments, 9,872 continuation regional assignments, and 480,697
+continuation direct case assignments, for a subtotal of 567,397. The inherited
+92,810 field is not added because its old record does not disaggregate all units.
+The superseded 650,557 display mixed units and omitted later work. Likewise, no
+grand total of single-side program executions is claimed because runs overlap and
+historical records are incomplete at that granularity.
+
+C166 retains its original complete production and replay evidence. A second full
+regional replay was excluded from the budget-closing continuation run; instead,
+that run recomputed all 6,281 stored leaf minima through three concrete paths and
+performed exhaustive one-byte and selected two-byte checks. These checks do not
+become a second complete regional replay of C166.
+
+The isolated reproduction command requires a new output directory outside the
+artifact root, treats checked-in results and certificates as read-only, records an
+input-tree digest before and after, saves the static inputs and retained evidence,
+and writes a new campaign ledger rather than replacing history. The accepted
+isolated run used CPython 3.13.5 on Linux x86-64 with one worker; the documented
+tested prerequisite is CPython 3.11 or newer on a POSIX-like system with standard
+library and resource-limit support. These environment facts are reproduction
+conditions, not performance claims.
 
 ## 7. Boundary of the proof
 

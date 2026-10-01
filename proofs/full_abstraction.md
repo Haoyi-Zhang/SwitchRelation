@@ -1,230 +1,225 @@
-# Exact switching relation for the declared bounded language
+# Full abstraction and the fixed finite basis
 
-This document states the central semantic result independently of the Python
-implementation.  It is a paper proof over the operational model in
-`semantics.md`; it is not a proof-assistant development and it does not establish
-a correspondence from ISO C, LLVM, SMT-LIB strings, or any external executor.
-The executable file `src/check_full_abstraction.py` checks the constructive
-converse on a finite state family, but that finite check is supporting evidence,
-not the proof of the general theorem below.
+## 1. Exact scope and observation contract
 
-## 1. Valid states and observations
+Fix a global capacity bound `B` and a static **name interface** `I=(O,R)`, where
+`O` is a finite object-name set and `R` is a finite persistent scalar-register
+set.  Capacity is state data: each valid state supplies
+`C_sigma(o) in {1,...,B}`.  Two states can therefore have the same static name
+interface while having different capacities.
 
-Fix a static interface consisting of a finite object-name set and a finite
-scalar-register set.  Every object has a positive fixed capacity.  A state
-contains, for every object and index, a payload byte and a separate initialized
-bit; a scalar store; a sequence of integers already emitted; a partial
-object/offset length cache; and a current representation marker (`bytes` or
-`string`).  The physical payload of an uninitialized cell exists in the
-mathematical record but cannot be read by any command.
+A continuation may read persistent registers and bind fresh scalar temporaries
+from a disjoint namespace `T`.  Every result binder is in `T`, no binder shadows
+`R`, and locals are discarded at termination.  The terminal observations are
+only
 
-A state is **valid** when every materialized cache entry is the length returned
-by the declared terminator scan in that state.  A write invalidates every cache
-entry whose base object is written.  The representation marker has no direct
-operational effect.  Terminal observations are exact outcomes:
+```
+accept(emissions)
+reject(emissions)
+fault(tag, emissions)
+```
 
-* `accept` together with the complete emitted sequence;
-* `reject` together with the complete emitted sequence; or
-* `fault(tag)` together with the complete emitted sequence, where `tag` is one
-  of `bounds`, `uninitialized`, `unterminated`, or `overlap`.
+with the first fault tag and the emitted integer sequence.  Final heaps,
+persistent stores, local stores, cache maps, and view tags are not returned
+directly.  Persistent registers are nevertheless indirectly observable because
+a continuation may emit them.  There is no direct byte-output command.
 
-Different fault tags are observable.  This makes the necessity direction
-stronger and avoids equating two states merely because both executions fail.
-
-For a well-typed finite continuation `K`, let `Obs(K, sigma)` be its exact
-terminal observation when started in valid state `sigma`.  The language is
-bounded and straight-line, so evaluation is deterministic and terminates.
+All theorem states satisfy the valid-cache invariant.  A materialized cache entry
+must equal the length obtained from the declared scan semantics.  An invalid
+(stale) cache is outside the theorem precondition.
 
 ## 2. Allocation equivalence
 
-For valid states `sigma` and `tau` with the same object and scalar namespaces,
-define **allocation equivalence**, written `sigma ~=A tau`, by all of the
-following clauses.
+For valid states over the same `(O,R)`, define `sigma ~=A tau` when:
 
-1. Corresponding objects have equal capacities.
-2. Corresponding cells have equal initialized bits.
-3. Whenever a corresponding cell is initialized, its byte is equal in the two
-   states.  Payloads of cells uninitialized in both states are ignored.
-4. Corresponding scalar registers contain equal integers.
-5. The already emitted integer sequences are equal.
-6. The cache maps need not be equal, provided both caches are valid.
-7. The representation markers need not be equal.
+1. corresponding objects have equal capacities;
+2. corresponding cells have equal initialization bits;
+3. every initialized corresponding cell contains the same byte;
+4. persistent scalar registers are equal;
+5. prior emitted sequences are equal.
 
-Thus `~=A` retains the complete observable allocation, including initialized
-data after the first NUL.  It quotients only valid cache representation,
-uninitialized payload, and the view marker.
+The relation quotients payload bytes below false initialization bits, valid cache
+materialization, and the current byte/string view tag.
 
-Define contextual equivalence by
+Contextual equivalence is
 
 ```
-sigma ~=ctx tau  iff  for every well-typed continuation K,
+sigma ~=ctx tau  iff  for every well-typed finite continuation K over (I,B),
                        Obs(K,sigma) = Obs(K,tau).
 ```
 
-The quantified continuations may read or write any object allowed by the fixed
-interface and may emit scalar values.  This is a universal switching guarantee,
-not equivalence for one selected continuation.
+## 3. Primitive preservation
 
-## 3. Primitive preservation lemma
+**Lemma 1 (expression agreement).**  From `sigma ~=A tau`, corresponding scalar
+expressions evaluate to the same integer.  Corresponding byte expressions either
+return the same byte or produce the same exact fault.
 
-**Lemma 1 (expression agreement).**  If `sigma ~=A tau`, corresponding scalar
-expressions evaluate to the same integer.  Corresponding readable byte
-expressions either return the same byte or produce the same exact fault.
+**Proof.**  Persistent registers agree and local temporaries are produced by the
+same previous commands, so scalar operands agree inductively.  Scalar operators
+are deterministic total functions of equal operands.  A byte read uses equal
+offsets; equal capacities give the same bounds decision; equal initialization
+bits give the same initialization decision; and a successful read returns an
+initialized byte equal by clause 3.  QED.
 
-**Proof.**  Scalar constants and registers agree directly.  Scalar operators are
-deterministic total functions of equal operands.  For a byte read, equal scalar
-offsets and equal capacities give the same bounds result.  Equal initialized
-bits give the same initialization result.  If the read succeeds, the cell is
-initialized in both states and clause 3 gives the same byte.  Byte literals are
-identical.  QED.
+**Lemma 2 (scan agreement).**  Corresponding terminator scans from related states
+return the same absolute index or the same first fault.
 
-**Lemma 2 (scan agreement).**  If `sigma ~=A tau`, corresponding terminator
-scans either return the same absolute index or produce the same exact fault.
+**Proof.**  Lemma 1 gives equal starts.  The scans visit equal indices under equal
+capacities.  At each index the initialization bit and, when initialized, the byte
+agree.  Therefore the first zero, first uninitialized cell, or allocation end is
+the same.  QED.
 
-**Proof.**  The starting offset agrees by Lemma 1.  Equal capacities give the
-same bounds decision.  The scan then visits the same indices in the same order.
-At each index, the initialized bits agree and, when initialized, the bytes agree.
-Consequently the first zero is at the same index; otherwise the same first
-uninitialized cell faults or both scans exhaust the object and report
-`unterminated`.  QED.
+**Lemma 3 (cache transparency).**  In valid related states, a cached and uncached
+length query produce the same scalar or fault.  Correct writes preserve cache
+validity and may leave the two partial cache maps structurally different.
 
-**Lemma 3 (cache transparency).**  In valid states related by `~=A`, a cached
-and an uncached length query return the same scalar or the same fault.  After any
-ordinary write, the resulting caches remain valid and may still differ without
-breaking `~=A`.
+**Proof.**  A present valid entry equals the logical scan length; a missing entry
+computes that same length by Lemma 2.  Correct writes invalidate all entries for
+the written base.  QED.
 
-**Proof.**  Every materialized cache entry equals the logical scan length by the
-valid-state invariant.  If one side hits and the other misses, Lemma 2 gives the
-same logical length.  A write removes all entries on the written base object;
-entries for other objects remain valid because distinct base objects do not
-alias and those objects are unchanged.  QED.
+**Lemma 4 (one-command simulation).**  Let `c` be the same declared correct
+command on both sides.  From valid `sigma ~=A tau`, execution of `c` yields the
+same terminal observation, or valid successors related by `~=A` with equal local
+results.
 
-**Lemma 4 (one-command simulation).**  Let `c` be any declared correct command.
-If `sigma ~=A tau`, then executing `c` in both states gives the same terminal
-observation, or gives successor states `sigma' ~=A tau'` and the same program
-counter.
+**Proof.**  Case analysis follows the declared evaluation order.  Length, search,
+and comparison use Lemmas 1--3.  Store evaluates the same source byte, validates
+the same destination, writes equal bytes, and invalidates the same base's cache.
+Snapshot move reads equal complete source vectors before writes.  Copy and
+concatenation obtain equal scan endpoints, capacity checks, overlap decisions,
+and written vectors.  Scalar commands are deterministic on equal operands;
+`assume` and `emit` therefore agree.  `switch` changes only the quotiented view
+tag.  Every result binder is a fresh local on both sides.  QED.
 
-**Proof.**  Case analysis on `c`.
+This lemma is about running the **same command** in two related states.  It must
+not be confused with refinement equivalence between a reference command and an
+alternative command.  Several alternatives used as negative controls (signed
+comparison, omitted-NUL search or copy, forward copy, tail erasure, and
+capacity-as-length) are deterministic commands and can preserve `~=A` when the
+same alternative is run on both related states, while still disagreeing with the
+intended reference operation on one initial state.  The stale-cache alternative
+is different: a store that retains an old length entry can map a valid state to
+an invalid one.  For example, `[1,0]` with cached length 1, followed by a stale
+store of 0 at index 0, leaves a cache value 1 although the logical scan length is
+0.  It therefore violates the valid-state premise needed for cache transparency.
 
-* Length, search, and comparison operations use the same scans, byte reads, and
-  byte comparisons by Lemmas 1--3.  Normalized results therefore agree.
-* A store evaluates its source first on both sides, obtains the same byte or the
-  same fault, performs the same span check, writes equal bytes to equal indices,
-  and invalidates the corresponding base-object caches.
-* `memmove` validates the same spans, reads the same snapshot, and writes that
-  snapshot to the same destination cells.  The snapshot rule handles overlap.
-* `strcpy` and `strcat` find the same source and destination terminators, perform
-  the same overlap and capacity decisions, and copy the same initialized bytes,
-  including the source terminator.  If a precondition fails, the exact fault is
-  equal because the prescribed access order is the same.
-* `switch` changes only the representation marker, which `~=A` quotients.
-* Byte predicates ask the same equality, unsigned-order, or fixed-mask question
-  of equal bytes, so their Boolean results agree.  Scalar predicates and modular
-  scalar operations are deterministic on equal scalar operands.
-* `assume` takes the same decision.  `emit` appends the same integer to equal
-  emitted sequences.
+## 4. Universal sufficiency and maximality
 
-Every successful write preserves equal capacities, initialized maps, and bytes
-at initialized cells; all untouched components remain related.  QED.
-
-The intentionally faulty alternatives (`erase_tail`, stale cache, signed compare,
-etc.) are not included in Lemma 4.  They are candidate transformations tested by
-the certificate system, not operations whose correctness is assumed.
-
-## 4. Sufficiency
-
-**Theorem 5 (universal preservation).**  If `sigma ~=A tau`, then
+**Theorem 5 (universal sufficiency).**  `sigma ~=A tau` implies
 `sigma ~=ctx tau`.
 
-**Proof.**  Induct on the command sequence of an arbitrary well-typed
-continuation.  The empty continuation observes equal pre-existing emissions and
-accepts.  For a nonempty continuation, Lemma 4 gives either an equal terminal
-observation or related successor states.  Apply the induction hypothesis to the
-remaining commands.  Because the continuation was arbitrary, all observations
-agree.  QED.
+**Proof.**  Induct on an arbitrary finite continuation.  The empty continuation
+returns equal status and prior emissions.  Lemma 4 gives either equal termination
+or related successors with the same next program point.  Apply the induction
+hypothesis.  QED.
 
-## 5. Constructive necessity
+## 5. State-dependent short witnesses
 
-The converse is constructive.  Whenever `~=A` fails under a common static
-interface, a continuation of at most two commands distinguishes the states.
-The commands used are only `byte_eq` and `emit`; an empty continuation is also
-allowed.  The construction is deterministic after choosing the first differing
-component in object/register order.
+**Lemma 6 (constructive distinction).**  If valid states over the same `(O,R)`
+are not allocation-equivalent, then a common well-typed continuation of length at
+most two has unequal observations.
 
-**Lemma 6 (two-command witness basis).**  Let `sigma` and `tau` be valid states
-with the same object and scalar namespaces.  If `sigma` is not allocation
--equivalent to `tau`, then there is a well-typed continuation `K` with at most
-two commands such that `Obs(K,sigma) != Obs(K,tau)`.
+**Proof.**  Inspect the first failed relation clause in a fixed order.
 
-**Proof.**  Exhaust the defining clauses of `~=A`.
+1. Different prior emissions: choose the empty continuation.
+2. Different persistent register `r`: choose `emit r`.
+3. Different capacities: let `i` be the smaller capacity.  With a fresh local
+   `t`, execute `t := (read(o,i) == 0); emit t`.  The smaller side faults bounds;
+   the larger side either faults uninitialized or emits.
+4. Different initialization at an in-range cell: the same probe faults
+   uninitialized on exactly one side.
+5. Different initialized bytes `x != y`: choose the **state-dependent** literal
+   `x` and execute `t := (read(o,i) == x); emit t`.  The sides emit 1 and 0.
 
-1. If the already emitted sequences differ, choose the empty continuation.  Its
-   accepting observations retain those different sequences.
-2. Otherwise, if scalar register `r` differs, choose `emit r`.  The final emitted
-   sequences differ.
-3. Otherwise, some corresponding object capacities differ.  Let `i` be the
-   smaller capacity and execute `b := (object[i] == 0); emit b`.  The smaller
-   state faults `bounds`.  The larger state either reads and accepts or faults
-   `uninitialized`; both observations differ from `bounds`.
-4. Otherwise capacities agree but an initialized bit differs at index `i`.
-   The same probe faults `uninitialized` on exactly one side and reaches `emit`
-   on the other.
-5. Otherwise initialized maps agree but initialized bytes differ at index `i`.
-   Let the left byte be literal `v` and execute
-   `b := (object[i] == v); emit b`.  The left emits 1 and the right emits 0.
+Locals are not persistent and are erased from the terminal observation.  Cache,
+view, and jointly uninitialized payload differences are not relation failures.
+QED.
 
-The earlier cases have ruled out unequal scalars and emissions.  Cache maps and
-view markers are not relation failures.  Payload differences at cells
-uninitialized in both states are not relation failures either.  Therefore these
-cases are exhaustive.  QED.
-
-**Corollary 7 (full abstraction and exactness).**  For valid states with a
-common static interface,
+**Corollary 7 (full abstraction and greatest safe relation).**
 
 ```
 sigma ~=A tau  iff  sigma ~=ctx tau.
 ```
 
-Moreover, every failure of `~=A` has a distinguishing continuation of length at
-most two.
+Every relation safe for all continuations is a subset of `~=A`.
 
-**Proof.**  The forward implication is Theorem 5.  The reverse implication is
-the contrapositive of Lemma 6.  QED.
+**Proof.**  The forward implication is Theorem 5.  The reverse is the
+contrapositive of Lemma 6.  If a relation is safe for all continuations, each
+related pair is contextually equivalent and hence allocation-equivalent.  QED.
 
-The theorem makes `~=A` both sufficient and necessary for switching safely when
-the future continuation is unknown.  No strictly coarser state relation can be
-a universal switch relation for this language, because every omitted component
-has the witness above.
+## 6. State-independent finite complete basis
 
-## 6. Why a NUL prefix is insufficient
-
-Consider capacity-three states whose initialized allocation is `[0,x,0]`.
-A representation that retains only the string prefix through the first NUL maps
-every value of `x` to the same visible empty string.  Continue with
+The length-two witness is not a fixed test family because its byte literal may be
+chosen after examining the states.  Define instead, for every object `o`, every
+`0 <= i < B`, and every bit `0 <= k < 8`, the fixed probe
 
 ```
-store object[0] := 1;
-emit strlen(object,0);
+t := mask_eq(read(o,i), mask=2^k, equal=2^k); emit t
 ```
 
-For `x=0`, the result is 1.  For `x!=0`, the result is 2.  A transformation that
-erases the tail after switching forces the result to 1 for every input.  Thus a
-prefix relation is not preserved by arbitrary continuations.  This example does
-not refute a continuation-specific abstraction whose selected continuation
-provably never exposes the tail; it separates universal and fixed-continuation
-contracts.
+with a fresh local `t`.  Let the basis contain:
 
-## 7. Executable audit and its scope
+1. the empty continuation;
+2. `emit r` for each persistent register `r`;
+3. all fixed bit probes above.
 
-`src/contextual.py` implements `~=A` and the constructive witness function.
-`src/check_full_abstraction.py` generated 36 valid small states and checked 1,299
-ordered state-pair obligations.  It found 37 related pairs and 1,262 relation
-failures; all failures were distinguished by the returned continuation, with
-maximum length two.  The audit executed 222 finite basis continuations after
-symmetry and early structural classification.
+There are three syntactic templates and exactly
 
-This finite audit checks the implementation of the witness construction on the
-selected family.  It does not quantify over every state, every capacity up to 64,
-or every continuation.  Those quantifiers are discharged only by the paper
-argument above, whose trust base includes ordinary mathematical reasoning and the
-accuracy of the declared operational model.
+```
+1 + |R| + 8*B*|O|
+```
+
+instantiated tests.  If run test by test, the suite has
+`|R| + 16*B*|O|` command occurrences.
+
+**Theorem 8 (finite complete basis).**  Two valid states over the same `(O,R)`
+with capacities bounded by `B` are allocation-equivalent iff every basis test has
+the same observation.
+
+**Proof.**  The forward direction is Theorem 5.  Conversely, the empty test fixes
+prior emissions and scalar tests fix the persistent store.  If capacities differ,
+take the smaller capacity `i`: each bit probe at `i` faults bounds on the smaller
+side, whereas the larger side either faults uninitialized or emits.  If
+initialization differs at a common in-range index, a probe faults uninitialized
+on exactly one side.  If both cells are initialized, the eight probe results are
+the bits of the byte.  The map
+
+```
+b -> (((b & 2^k) == 2^k) for k=0,...,7)
+```
+
+is injective on all 256 bytes.  Therefore all retained relation clauses hold.
+QED.
+
+A fixed equality basis that tests only literals 0 and 1 is not complete: one-cell
+states containing initialized bytes 2 and 3 return the same answers to both tests.
+The bit-0 probe returns 0 for 2 and 1 for 3.
+
+## 7. Executable audit and accounting scope
+
+`src/contextual.py` implements the relation, state-dependent witness, fixed basis,
+and a probe interpreter with separate persistent/local stores.
+`src/check_full_abstraction.py` checks:
+
+- 36 fixed-capacity base states and all `36^2 = 1,296` ordered pairs;
+- three additional directed controls: capacity mismatch, initialization mismatch,
+  and a related pair differing only in view/cache/uninitialized payload;
+- 1,299 total pair classifications, comprising 37 related and 1,262 unrelated;
+- the 18-test fixed basis for `B=2`, one object, and one persistent register on
+  every pair (`23,382` pair/test comparisons, `46,764` single-side executions);
+- all 1,262 state-dependent witnesses (`2,524` single-side executions);
+- the explicit byte-2/byte-3 control (six single-side executions).
+
+The resulting post-repair audit has 49,294 single-side program executions.  It is
+outside the frozen historical 99,999-obligation ledger.
+
+The earlier `full_abstraction_check.json` field
+`finite_basis_executions = 222` had a narrower meaning: 37 related pairs times a
+six-test 0/1 basis, counted as pair-level comparisons.  It did not count the
+1,262 unrelated-pair witness comparisons, although those witnesses were executed.
+The reconciliation record preserves both facts rather than rewriting the original
+result file.
+
+This finite audit checks implementations on a selected bounded family.  It does
+not replace the quantified proof above or establish a refinement theorem for the
+Python implementation.

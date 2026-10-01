@@ -35,11 +35,12 @@ for path in sorted(ROOT.rglob('*.py')):
 # Certificates must be parseable by the strict, producer-independent preflight.
 sys.path.insert(0, str(SRC))
 from strict_json import load_strict, StrictJSONError
-cert_dirs = [p for p in ROOT.rglob('*') if p.is_dir() and 'cert' in p.name.lower()]
-certs = []
-for d in cert_dirs:
-    certs.extend(p for p in d.glob('*.json') if p.is_file())
-certs = sorted(set(certs))
+certs = sorted(
+    p for p in (ROOT / 'certificates').rglob('*.json')
+    if p.is_file()
+)
+if len(certs) != 166:
+    issues.append(f'expected 166 retained certificate JSON files, found {len(certs)}')
 strict_ok = 0
 for p in certs:
     try:

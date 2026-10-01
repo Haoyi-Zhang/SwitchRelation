@@ -139,12 +139,22 @@ def allocation_equivalent(left: State, right: State) -> bool:
     return True
 
 
-def distinguishing_continuation(left: State, right: State) -> list[dict[str, Any]] | None:
-    """Construct a <=2-command distinguishing continuation, or ``None``.
+def _fresh_local(persistent_names: set[str], stem: str = "witness_bit") -> str:
+    """Choose a local name disjoint from the persistent interface."""
+    candidate = stem
+    suffix = 0
+    while candidate in persistent_names:
+        suffix += 1
+        candidate = f"{stem}_{suffix}"
+    return candidate
 
-    Both states must satisfy the valid-cache invariant and use the same object and
-    scalar namespaces.  If the relation fails, the returned program distinguishes
-    exact terminal outcomes under :func:`run_basis_continuation`.
+
+def distinguishing_continuation(left: State, right: State) -> list[dict[str, Any]] | None:
+    """Construct a state-dependent <=2-command separator, or ``None``.
+
+    The literal used for an initialized-byte disagreement may depend on the two
+    states.  This short witness is therefore distinct from the state-independent
+    fixed basis returned by :func:`fixed_complete_basis`.
     """
     if not same_interface(left, right):
         raise StateError("static interface mismatch")
@@ -155,47 +165,103 @@ def distinguishing_continuation(left: State, right: State) -> list[dict[str, Any
     for name in sorted(left.scalars):
         if left.scalars[name] != right.scalars[name]:
             return [{"op": "emit", "value": f"${name}"}]
+    local = _fresh_local(set(left.scalars))
     for name in sorted(left.objects):
         a, b = left.objects[name], right.objects[name]
         if len(a.payload) != len(b.payload):
             offset = min(len(a.payload), len(b.payload))
-            return _probe(name, offset, 0)
+            return _equality_probe(name, offset, 0, local)
         for offset, (ia, ib) in enumerate(zip(a.initialized, b.initialized)):
             if ia != ib:
-                return _probe(name, offset, 0)
+                return _equality_probe(name, offset, 0, local)
         for offset, initialized in enumerate(a.initialized):
             if initialized and a.payload[offset] != b.payload[offset]:
-                return _probe(name, offset, a.payload[offset])
+                return _equality_probe(name, offset, a.payload[offset], local)
     raise AssertionError("relation mismatch without a distinguishing component")
 
 
-def _probe(name: str, offset: int, constant: int) -> list[dict[str, Any]]:
+def _equality_probe(name: str, offset: int, constant: int, local: str) -> list[dict[str, Any]]:
     return [
         {
             "op": "byte_eq",
             "left": {"read": [name, offset]},
             "right": constant,
-            "out": "witness_bit",
+            "out": local,
         },
-        {"op": "emit", "value": "$witness_bit"},
+        {"op": "emit", "value": f"${local}"},
     ]
 
 
-def run_basis_continuation(state: State, program: Sequence[Mapping[str, Any]]) -> list[Any]:
-    """Execute the witness basis and return the paper's exact observable outcome.
+def _bit_probe(name: str, offset: int, bit: int, local: str) -> list[dict[str, Any]]:
+    if type(bit) is not int or not 0 <= bit < 8:
+        raise StateError("bit index")
+    mask = 1 << bit
+    return [
+        {
+            "op": "mask_eq",
+            "value": {"read": [name, offset]},
+            "mask": mask,
+            "equal": mask,
+            "out": local,
+        },
+        {"op": "emit", "value": f"${local}"},
+    ]
 
-    This tiny interpreter intentionally accepts only the commands needed by the
-    constructive converse: ``byte_eq`` and ``emit``.  The sufficiency proof for the
-    full language is in ``proofs/full_abstraction.md``.
+
+def fixed_complete_basis(
+    object_names: Sequence[str],
+    scalar_names: Sequence[str],
+    capacity_bound: int,
+) -> list[list[dict[str, Any]]]:
+    """Return the state-independent complete basis for a fixed name interface.
+
+    ``capacity_bound`` is a global theorem bound, not a capacity component of the
+    static interface.  The basis has three syntactic templates (empty, persistent
+    scalar emission, and bit observation) and exactly
+    ``1 + |R| + 8*B*|O|`` instantiated continuations.
     """
-    registers = dict(state.scalars)
+    if type(capacity_bound) is not int or not 1 <= capacity_bound <= 64:
+        raise StateError("capacity bound")
+    objects = tuple(sorted(object_names))
+    scalars = tuple(sorted(scalar_names))
+    if not objects or len(set(objects)) != len(objects):
+        raise StateError("object interface")
+    if len(set(scalars)) != len(scalars):
+        raise StateError("scalar interface")
+    if any(not isinstance(name, str) or not name.isidentifier() for name in objects + scalars):
+        raise StateError("interface name")
+    persistent = set(scalars)
+    result: list[list[dict[str, Any]]] = [[]]
+    result.extend([[{"op": "emit", "value": f"${name}"}] for name in scalars])
+    for name in objects:
+        for offset in range(capacity_bound):
+            for bit in range(8):
+                local = _fresh_local(persistent, f"basis_{name}_{offset}_{bit}")
+                result.append(_bit_probe(name, offset, bit, local))
+    return result
+
+
+def run_basis_continuation(state: State, program: Sequence[Mapping[str, Any]]) -> list[Any]:
+    """Execute the proof probes and return only status/fault plus emissions.
+
+    Persistent registers are part of the input state.  Results of byte predicates
+    must be written to fresh local temporaries, which are disjoint from the
+    persistent namespace and are discarded before the terminal observation.
+    There is no direct byte-output command and no terminal register-store output.
+    """
+    persistent = dict(state.scalars)
+    locals_: dict[str, int] = {}
     emitted = list(state.emitted)
 
     def scalar(value: Any) -> int:
         if type(value) is int:
             return value
-        if isinstance(value, str) and value.startswith("$") and value[1:] in registers:
-            return registers[value[1:]]
+        if isinstance(value, str) and value.startswith("$"):
+            name = value[1:]
+            if name in locals_:
+                return locals_[name]
+            if name in persistent:
+                return persistent[name]
         raise StateError("scalar expression")
 
     def byte(value: Any) -> int:
@@ -217,6 +283,14 @@ def run_basis_continuation(state: State, program: Sequence[Mapping[str, Any]]) -
             return obj.payload[offset]
         raise StateError("byte expression")
 
+    def bind_local(command: Mapping[str, Any], value: int) -> None:
+        out = command["out"]
+        if not isinstance(out, str) or not out.isidentifier():
+            raise StateError("local name")
+        if out in persistent:
+            raise StateError("local shadows persistent register")
+        locals_[out] = value
+
     try:
         for command in program:
             if not isinstance(command, Mapping) or "op" not in command:
@@ -224,10 +298,14 @@ def run_basis_continuation(state: State, program: Sequence[Mapping[str, Any]]) -
             if command["op"] == "byte_eq":
                 if set(command) != {"op", "left", "right", "out"}:
                     raise StateError("byte_eq fields")
-                out = command["out"]
-                if not isinstance(out, str) or not out.isidentifier():
-                    raise StateError("output register")
-                registers[out] = int(byte(command["left"]) == byte(command["right"]))
+                bind_local(command, int(byte(command["left"]) == byte(command["right"])))
+            elif command["op"] == "mask_eq":
+                if set(command) != {"op", "value", "mask", "equal", "out"}:
+                    raise StateError("mask_eq fields")
+                mask, equal = command["mask"], command["equal"]
+                if type(mask) is not int or type(equal) is not int or not (0 <= mask < 256 and 0 <= equal < 256):
+                    raise StateError("mask predicate")
+                bind_local(command, int((byte(command["value"]) & mask) == equal))
             elif command["op"] == "emit":
                 if set(command) != {"op", "value"}:
                     raise StateError("emit fields")

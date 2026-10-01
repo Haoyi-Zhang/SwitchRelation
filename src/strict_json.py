@@ -49,4 +49,17 @@ def loads_strict(data: str, *, max_bytes: int = 64 * 1024 * 1024,
 
 def load_strict(path: str | Path, **kwargs: Any) -> dict[str, Any]:
     p = Path(path)
-    return loads_strict(p.read_text(encoding='utf-8'), **kwargs)
+    max_bytes = kwargs.get("max_bytes", 64 * 1024 * 1024)
+    if type(max_bytes) is not int or max_bytes < 0:
+        raise StrictJSONError("invalid byte limit")
+    try:
+        size = p.stat().st_size
+    except OSError as exc:
+        raise StrictJSONError(str(exc)) from exc
+    if size > max_bytes:
+        raise StrictJSONError(f"JSON exceeds {max_bytes} bytes")
+    try:
+        data = p.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        raise StrictJSONError(str(exc)) from exc
+    return loads_strict(data, **kwargs)

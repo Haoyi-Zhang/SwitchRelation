@@ -1,39 +1,46 @@
-# Final result inventory
+# Result inventory and scopes
 
-The directory preserves the original completion campaign, the later
-budget-closing continuation audit, and the final clean-extract stratified replay.
-Repeated runs are never silently deduplicated.
+This directory contains immutable historical result files plus explicit repair-era
+reconciliation records.  Historical files are not rewritten to erase
+contradictions; later records state their exact scope.
 
-* `final_reproduction.json`: authoritative aggregate containing the original
-  campaign, C167, cumulative accounting, and exact embedded copies of the
-  continuation and final clean-extract audits.
-* `final_continuation_audit.json`: rematerialization of all 167 cases, repeated
-  36-state full-abstraction audit, 320 fresh regional instances, fresh replay of
-  C001--C165, direct recomputation of all 6,281 stored leaf minima, and a repeated
-  18-mutation suite. It explicitly records why C166 was not fully replayed again.
-* `final_clean_extract_audit.json`: predeclared replay of C061, C062, C065, C162,
-  and C163 from a clean extracted candidate; all five accepted using 299 regional
-  calls and five top-level checks. It is explicitly not a second full campaign.
-* `branch_cases.csv`: one row for every completed case C001--C166, including
-  expected/observed labels, nodes, leaves, regional calls, witnesses, and CPU.
-* `fanout_control.json`: C167 cap result (`unknown_resource_exhaustion`).
-* `full_abstraction_check.json`: original finite witness-construction audit.
-* `region_crosscheck.json`: original 384-instance brute-force comparison of the
-  producer and replayer regional algorithms on a four-value alphabet.
-* `primitive_oracle.json`: all 65,536 two-byte assignments and canonical-pattern
-  pilot; direct assignments remain separate from capped obligations.
-* `mutation_suite.json`: 16 certificate and two JSON-parser mutations, all
-  rejected in the original campaign.
-* `resource_accounting.csv`: historical, smoke, original-final, C167,
-  continuation, and final clean-extract rows under the frozen counting rule.
-* `reference_audit.csv`: 48 unique cited bibliography entries with DOI or official
-  proceedings URL, metadata authority, access date, verification scope, and role
-  in the manuscript.
-* `reference_integrity_audit.json`: structural reconciliation of 48 unique cited
-  entries, 45 DOI records, three official URLs, 20 substantive-section scopes, and
-  28 metadata/proceedings scopes.
+## Historical evidence
 
-The cumulative counted total is **99,999 of 100,000**, leaving one. Direct
-concrete assignment checks total **650,557** and are not recast as solver calls.
-The scientific sources used to produce these files should not be modified without
-a new run and new cumulative accounting.
+- `final_reproduction.json`, `branch_cases.csv`, and `certificates/branch/` retain
+  the original C001--C166 completion batch.
+- `final_continuation_audit.json` retains the later C001--C165 file replay,
+  320-instance regional cross-check, direct concrete checks, repeated abstraction
+  work, and repeated mutation suite.
+- `final_clean_extract_audit.json` retains the five-case clean-extract replay.
+- `resource_accounting.csv` is the original phase ledger and contains a legacy
+  mixed concrete column.
+- `documented_replay_smoke.json` records the successful C135 CLI smoke.
+
+## Reconciliation records
+
+- `full_abstraction_reconciliation.json`: 1,296 base pairs plus three directed
+  controls; corrected 18-test basis; 1,262 short-witness comparisons; byte-2/3
+  control; complete eight-bit signature audit.
+- `mutation_grouping.json`: exact mutually exclusive 7/4/3/4 grouping of the 18
+  real mutation names.
+- `C167_status_reconciliation.json`: schema default versus cap-induced
+  `unknown_resource_exhaustion` and exclusion from the 166 completed results.
+- `accounting_scope_reconciliation.json`: separates obligations, concrete input
+  assignments, pair/context comparisons, and single-side program executions.
+- `documented_replay_smoke_accounting.json`: C135 uses four region calls plus one
+  top-level check and is outside the frozen 99,999 subledger.
+- `process_isolation_reconciliation.json`: original in-memory checking, later
+  same-process file rereads, isolated-campaign rereads, and the single C135 CLI
+  process are recorded separately.
+- `isolated_campaign_acceptance.json`: post-repair read-only-input campaign,
+  result closure, environment, digest scope, and actual process modes.
+
+The frozen 99,999 count ends at the clean-extract replay.  It is not an all-time
+total.  C135 adds five same-rule post-freeze obligations; other later QA was not
+uniformly instrumented.  The old 650,557 display is a superseded mixed field, not
+a homogeneous count.  No replacement historical grand total is fabricated.
+
+The isolated campaign digest covers every artifact file except bytecode/cache and
+the self-referential `results/isolated_campaign_acceptance.json` record.  That same
+exclusion is used for the campaign's static and retained-evidence snapshots, so the
+before/after integrity comparison has a stable, stated scope.

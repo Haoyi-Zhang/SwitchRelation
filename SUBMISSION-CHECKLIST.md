@@ -9,7 +9,7 @@
 - [x] Citations used by the manuscript are present and the local reference audit is retained.
 
 ## Human and venue actions still required
-- [ ] Insert real author names, affiliations, ORCIDs, acknowledgments, conflicts, and funding.
+- [ ] Verify the displayed author names and affiliations; add only truthful ORCIDs, acknowledgments, conflicts, funding, and corresponding-author data approved by the authors.
 - [ ] Re-check the venue's current author instructions and policies on disclosure, anonymity, artifacts, and supplementary material on the day of submission.
 - [ ] Obtain independent human proof/code review and decide whether a public archival repository can be cited.
 - [ ] Confirm that every author accepts responsibility for the manuscript and artifact.

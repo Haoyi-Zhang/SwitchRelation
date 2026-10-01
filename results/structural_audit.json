@@ -1,7 +1,7 @@
 {
-  "certificate_json_files_strictly_parsed": 0,
+  "certificate_json_files_strictly_parsed": 166,
   "issues": [],
-  "python_files_parsed": 20,
+  "python_files_parsed": 23,
   "status": "PASS",
   "warnings": []
 }

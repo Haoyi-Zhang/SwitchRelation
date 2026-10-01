@@ -30,7 +30,7 @@ EXPECTED = {
     "final_clean_replayer_region_calls": 299,
     "final_clean_top_level_obligations": 5,
     "final_clean_obligations": 304,
-    "cumulative_direct_assignments": 650_557,
+    "legacy_mixed_concrete_field": 650_557,
     "cumulative_obligations": 99_999,
     "obligation_ceiling": 100_000,
     "remaining_obligations": 1,
@@ -239,9 +239,10 @@ def inspect_results(root: Path, certs: dict[str, Any]) -> dict[str, Any]:
             "Obligation ceiling mismatch")
     require(resource.get("remaining_obligations") == EXPECTED["remaining_obligations"],
             "Remaining-obligation mismatch")
-    require(concrete == resource.get("cumulative_direct_concrete_assignment_checks")
-            == EXPECTED["cumulative_direct_assignments"],
-            "Concrete-evaluation accounting mismatch")
+    legacy_mixed = concrete
+    require(legacy_mixed == resource.get("cumulative_direct_concrete_assignment_checks")
+            == EXPECTED["legacy_mixed_concrete_field"],
+            "Legacy mixed concrete-field accounting mismatch")
     require(resource.get("continuation_obligations") == EXPECTED["continuation_obligations"],
             "Continuation-obligation mismatch")
     require(resource.get("continuation_direct_concrete_assignment_checks")
@@ -309,22 +310,123 @@ def inspect_results(root: Path, certs: dict[str, Any]) -> dict[str, Any]:
     require(clean.get("remaining_obligations") == EXPECTED["remaining_obligations"],
             "Final clean-extract remaining-total mismatch")
 
+    full_reconciliation = load_json(result_dir / "full_abstraction_reconciliation.json")
+    require(full_reconciliation.get("status") == "pass", "Full-abstraction reconciliation failed")
+    require(full_reconciliation.get("base_ordered_pair_checks") == 1296
+            and full_reconciliation.get("directed_control_checks") == 3
+            and full_reconciliation.get("pair_checks_total") == 1299,
+            "Full-abstraction pair decomposition mismatch")
+    require(full_reconciliation.get("fixed_basis", {}).get("instantiated_tests_per_pair") == 18
+            and full_reconciliation.get("fixed_basis", {}).get("syntactic_templates") == 3,
+            "Fixed complete basis mismatch")
+    require(full_reconciliation.get("byte_2_vs_3_sanity", {}).get("fixed_low_bit_probe_distinguishes") is True,
+            "Byte 2/3 fixed-probe sanity missing")
+    signature = full_reconciliation.get("all_byte_signature_audit", {})
+    require(signature.get("unique_signatures") == 256
+            and signature.get("ordered_byte_pair_checks") == 65_536
+            and signature.get("unequal_byte_pair_checks") == 65_280
+            and signature.get("unequal_byte_pairs_distinguished") == 65_280,
+            "All-byte fixed-probe signature audit mismatch")
+    require(full_reconciliation.get("fixed_basis", {}).get("pair_test_comparisons") == 23_382
+            and full_reconciliation.get("fixed_basis", {}).get("single_side_program_executions") == 46_764
+            and full_reconciliation.get("state_dependent_witnesses", {}).get("context_comparisons") == 1_262
+            and full_reconciliation.get("all_audit_program_executions") == 49_294,
+            "Full-abstraction unit accounting mismatch")
+
+    mutation_grouping = load_json(result_dir / "mutation_grouping.json")
+    require(mutation_grouping.get("status") == "pass"
+            and mutation_grouping.get("group_sizes") == [7, 4, 3, 4]
+            and mutation_grouping.get("total_mutations") == 18,
+            "Mutation grouping mismatch")
+
+    accounting = load_json(result_dir / "accounting_scope_reconciliation.json")
+    require(accounting.get("status") == "pass", "Accounting reconciliation failed")
+    require(accounting.get("frozen_obligation_ledger", {}).get("counted_obligations") == 99999
+            and accounting.get("frozen_obligation_ledger", {}).get("all_time_total") == "unknown"
+            and accounting.get("frozen_obligation_ledger", {}).get("same_rule_lower_bound_after_C135_cli") == 100004,
+            "Frozen-ledger scope mismatch")
+    require(accounting.get("region_enumeration_disclosure", {}).get("continuation_brute_force_assignments") == 9872,
+            "Continuation region enumeration missing")
+
+    smoke_accounting = load_json(result_dir / "documented_replay_smoke_accounting.json")
+    require(smoke_accounting.get("replayer_region_calls") == 4
+            and smoke_accounting.get("top_level_checker_obligations") == 1
+            and smoke_accounting.get("counted_obligations_under_frozen_rule") == 5
+            and smoke_accounting.get("included_in_frozen_99999_ledger") is False,
+            "Documented CLI smoke accounting mismatch")
+
+    process_modes = load_json(result_dir / "process_isolation_reconciliation.json")
+    require(process_modes.get("status") == "pass"
+            and process_modes.get("original_batch", {}).get("fresh_process_per_certificate") is False
+            and process_modes.get("isolated_campaign", {}).get("independent_cli_smoke") == "C135 only"
+            and process_modes.get("documented_C135_cli_smoke", {}).get("counted_obligations") == 5,
+            "Process-isolation reconciliation mismatch")
+
+    c167 = load_json(result_dir / "C167_status_reconciliation.json")
+    require(c167.get("schema_expected_field") == "equivalent"
+            and c167.get("cap_status") == "unknown_resource_exhaustion"
+            and c167.get("included_in_166_completed_verdicts") is False,
+            "C167 status reconciliation mismatch")
+
+    isolated = load_json(result_dir / "isolated_campaign_acceptance.json")
+    require(isolated.get("status") == "pass"
+            and isolated.get("artifact_inputs_unchanged") is True
+            and isolated.get("result_closure", {}).get("certificate_files") == 166
+            and isolated.get("independent_cli_smoke", {}).get("counted_obligations") == 5,
+            "Isolated campaign acceptance mismatch")
+
     return {
         "campaign_status": final["status"],
         "fanout_status": fanout["status"],
         "cumulative_obligations": counted,
         "remaining_obligations": resource["remaining_obligations"],
-        "direct_concrete_evaluations": concrete,
+        "legacy_mixed_concrete_field": legacy_mixed,
         "final_clean_replay_status": clean["status"],
         "final_clean_certificates_replayed": clean["certificates_replayed"],
         "final_clean_replayer_region_calls": clean["replayer_region_calls"],
         "final_clean_obligations": clean["new_counted_obligations"],
+        "fixed_basis_tests_per_pair": full_reconciliation["fixed_basis"]["instantiated_tests_per_pair"],
+        "isolated_campaign_status": isolated["status"],
+        "all_time_obligation_total": "unknown",
     }
 
 
+
+def inspect_spec_code_map(root: Path) -> int:
+    path = root / "SPEC-CODE-MAP.csv"
+    with path.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    require(rows, "Empty specification--code map")
+    cache: dict[Path, dict[str, int]] = {}
+    for row in rows:
+        source = root / row["Implementation file"]
+        require(source.is_file(), f"Missing mapped source: {row['Implementation file']}")
+        if source not in cache:
+            tree = ast.parse(source.read_text(encoding="utf-8"), filename=str(source.relative_to(root)))
+            symbols: dict[str, int] = {}
+            for node in tree.body:
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                    symbols[node.name] = node.lineno
+                    if isinstance(node, ast.ClassDef):
+                        for child in node.body:
+                            if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                                symbols[f"{node.name}.{child.name}"] = child.lineno
+            cache[source] = symbols
+        symbol = row["Symbol"]
+        require(symbol in cache[source], f"Unresolved mapped symbol: {row['Implementation file']}::{symbol}")
+        try:
+            recorded = int(row["Definition line"])
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"Invalid mapped line for {symbol}") from exc
+        require(recorded == cache[source][symbol],
+                f"Stale mapped line for {row['Implementation file']}::{symbol}: {recorded} != {cache[source][symbol]}")
+        require(bool(row.get("Executable evidence")) and bool(row.get("Boundary")),
+                f"Incomplete map row for {symbol}")
+    return len(rows)
+
 def inspect_ledgers(root: Path) -> dict[str, int]:
     counts: dict[str, int] = {}
-    for name in ("claim_evidence_ledger.csv", "external_resources.csv"):
+    for name in ("claim_evidence_ledger.csv", "external_resources.csv", "REVIEWER-CLAIM-LEDGER.csv"):
         with (root / name).open(newline="", encoding="utf-8") as handle:
             rows = list(csv.DictReader(handle))
         require(rows, f"Empty ledger: {name}")
@@ -375,6 +477,7 @@ def inspect_ledgers(root: Path) -> dict[str, int]:
             == len(references) - substantive_rows,
             "Reference integrity audit scope mismatch")
     counts["reference_audit.csv"] = len(references)
+    counts["SPEC-CODE-MAP.csv"] = inspect_spec_code_map(root)
     return counts
 
 
@@ -399,14 +502,19 @@ def inspect(root: Path) -> dict[str, Any]:
         "different_cases": certs["different_cases"],
         "cumulative_obligations": results["cumulative_obligations"],
         "remaining_obligations": results["remaining_obligations"],
-        "direct_concrete_evaluations": results["direct_concrete_evaluations"],
+        "legacy_mixed_concrete_field": results["legacy_mixed_concrete_field"],
         "campaign_status": results["campaign_status"],
         "fanout_status": results["fanout_status"],
         "final_clean_replay_status": results["final_clean_replay_status"],
         "final_clean_certificates_replayed": results["final_clean_certificates_replayed"],
         "final_clean_replayer_region_calls": results["final_clean_replayer_region_calls"],
         "final_clean_obligations": results["final_clean_obligations"],
+        "fixed_basis_tests_per_pair": results["fixed_basis_tests_per_pair"],
+        "isolated_campaign_status": results["isolated_campaign_status"],
+        "all_time_obligation_total": results["all_time_obligation_total"],
         "claim_ledger_rows": ledger_counts["claim_evidence_ledger.csv"],
+        "reviewer_claim_rows": ledger_counts["REVIEWER-CLAIM-LEDGER.csv"],
+        "spec_code_map_rows": ledger_counts["SPEC-CODE-MAP.csv"],
         "external_resource_rows": ledger_counts["external_resources.csv"],
         "reference_audit_rows": ledger_counts["reference_audit.csv"],
     }

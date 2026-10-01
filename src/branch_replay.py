@@ -362,6 +362,13 @@ if __name__ == '__main__':
     p.add_argument('certificate', type=Path)
     args = p.parse_args()
     try:
-        print(json.dumps(check(load(args.case), load(args.certificate)), sort_keys=True))
+        before = DOMAIN_CALLS
+        result = check(load(args.case), load(args.certificate))
+        calls = DOMAIN_CALLS - before
+        result['replayer_region_calls'] = calls
+        result['top_level_checker_obligations'] = 1
+        result['counted_obligations'] = calls + 1
+        result['process_isolation'] = 'independent_cli_process'
+        print(json.dumps(result, sort_keys=True))
     except (Invalid, KeyError, TypeError, ValueError, RecursionError, OSError) as error:
         raise SystemExit('REJECT: '+str(error))
