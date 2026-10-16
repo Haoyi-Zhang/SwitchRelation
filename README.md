@@ -89,6 +89,8 @@ smoke remain distinct in `results/process_isolation_reconciliation.json`.
 The isolated acceptance record is `results/isolated_campaign_acceptance.json`;
 the later Windows run is in `results/portable-campaign/`. Their recorded
 measurements describe their own runs and do not replace historical evidence.
+The retained Ubuntu workflow output is in `results/current/`; its environment,
+summary and raw test logs describe that run, not the new local diagram build.
 
 The 99,999/100,000 obligation ledger is a frozen historical subset, not an
 all-time total. The later C135 smoke contributes five separate obligations;
@@ -124,6 +126,13 @@ Python, the loader, replay kernel and their correspondence to the written model
 remain trusted. No proof-assistant refinement, native C/LLVM correspondence,
 real-software coverage, solver-performance dominance or independent human-review
 claim follows from these finite synthetic checks.
+
+## Paper diagrams
+
+With Matplotlib installed, `python -B plot_schematics.py --outdir ../paper/figures`
+regenerates all five semantic diagrams as embedded-font vector PDFs. The generator
+is self-contained and uses neither TeX nor a renderer for its labels. These diagrams
+describe the model and replay protocol; they are not performance measurements.
 
 ## License
 

@@ -1,0 +1,13 @@
+{
+  "input_tree_sha256": "031be900b977a69eeb5de3f23b5d19bd6290a9f4f75f4bc3339b8cae441bba19",
+  "limits": {
+    "cpu_hard_seconds": 110,
+    "cpu_soft_seconds": 100,
+    "memory_limit_bytes": 1073741824,
+    "wall_seconds": 120,
+    "workers": 1
+  },
+  "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+  "python": "3.12.14 (main, Aug 13 2026, 02:47:42) [GCC 13.3.0]",
+  "scope": "fresh finite checks, separate from historical host measurements"
+}

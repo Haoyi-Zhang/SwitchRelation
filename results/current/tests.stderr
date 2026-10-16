@@ -1,0 +1,23 @@
+test_capacity_is_state_data_not_interface_name (test_contextual.ContextualBasisTests.test_capacity_is_state_data_not_interface_name) ... ok
+test_fixed_basis_count (test_contextual.ContextualBasisTests.test_fixed_basis_count) ... ok
+test_local_cannot_shadow_persistent_register (test_contextual.ContextualBasisTests.test_local_cannot_shadow_persistent_register) ... ok
+test_state_dependent_witness_remains_two_commands (test_contextual.ContextualBasisTests.test_state_dependent_witness_remains_two_commands) ... ok
+test_two_and_three_defeat_zero_one_equalities_but_not_bit_basis (test_contextual.ContextualBasisTests.test_two_and_three_defeat_zero_one_equalities_but_not_bit_basis) ... ok
+test_carried_live_scalar_remains_observable (test_replay_contract.ReplayContractTests.test_carried_live_scalar_remains_observable) ... ok
+test_cli_loader_uses_shared_bounded_kernel (test_replay_contract.ReplayContractTests.test_cli_loader_uses_shared_bounded_kernel) ... ok
+test_entry_cannot_read_a_local_before_assignment (test_replay_contract.ReplayContractTests.test_entry_cannot_read_a_local_before_assignment) ... ok
+test_local_reassignment_preserves_equal_results (test_replay_contract.ReplayContractTests.test_local_reassignment_preserves_equal_results) ... ok
+test_retained_certificate_still_replays (test_replay_contract.ReplayContractTests.test_retained_certificate_still_replays) ... ok
+test_semantic_values_reject_booleans_and_floats_globally (test_replay_contract.ReplayContractTests.test_semantic_values_reject_booleans_and_floats_globally) ... ok
+test_small_owned_loader_controls (test_replay_contract.ReplayContractTests.test_small_owned_loader_controls) ... ok
+test_depth_rejected (test_strict_json.StrictJSONTests.test_depth_rejected) ... ok
+test_duplicate_key_rejected (test_strict_json.StrictJSONTests.test_duplicate_key_rejected) ... ok
+test_file_size_checked_before_read (test_strict_json.StrictJSONTests.test_file_size_checked_before_read) ... ok
+test_nan_rejected (test_strict_json.StrictJSONTests.test_nan_rejected) ... ok
+test_nonobject_rejected (test_strict_json.StrictJSONTests.test_nonobject_rejected) ... ok
+test_valid_object (test_strict_json.StrictJSONTests.test_valid_object) ... ok
+
+----------------------------------------------------------------------
+Ran 18 tests in 0.007s
+
+OK
