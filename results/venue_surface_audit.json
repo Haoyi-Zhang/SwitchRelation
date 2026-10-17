@@ -9,7 +9,6 @@
     "keywords": true,
     "ccsdesc": true,
     "bibliography": true,
-    "ai_disclosure": false,
     "artifact_statement": false,
     "fake_repo": false
   },
